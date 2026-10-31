@@ -106,3 +106,51 @@ before assuming.
   needed alongside PySide6, use `opencv-python-headless` to avoid Qt plugin
   conflicts.
 - After each stage, tell me how to run it and what to test on my real scans.
+
+## Project status (keep this section up to date)
+
+### Stage 1 – done (2026-10-31)
+Single-frame conversion: open one NEF, pick or auto-estimate the film base,
+invert, auto-balance, adjust with sliders, export 16-bit TIFF / JPEG.
+- Environment: Python 3.12.10 in `.venv` (system also has 3.14; use
+  `py -3.12`). Git repo initialized; `samples/` and `output/` are git-ignored.
+- Code layout: `filmconv/` is the core with no Qt imports (`settings.py`,
+  `raw_io.py`, `film_types.py`, `tone.py`, `pipeline.py`, `export.py`,
+  `cli.py`). `filmconv_gui/` is the PySide6 GUI. `app.py` launches it.
+  `tests/` holds pytest tests that run on synthetic negatives.
+- Pipeline: rawpy (gamma 1, no auto-bright, camera WB, raw color space) →
+  channel (default green) → density D = log10(base / T) → auto levels from
+  the 0.2/99.8 percentiles of the inner image (8% edge margin) plus a midtone
+  gamma that puts the median at 0.45 → sliders → crop → export. Auto values
+  are stored in `Settings.auto` and reused at export.
+- Slider directions follow Lightroom: moving right makes the image
+  brighter or the effect stronger (Blacks + lifts the shadows).
+- With the auto black point, the film base value mostly cancels out. It
+  matters for "Film base is pure black" mode, for keeping the reference
+  fixed across a roll, and later for C-41.
+
+### First real scan test (DSC_0007.nef, Ilford HP5+)
+- The scan held about 2.5 frames on a strip, with ~40% bare light-source
+  area around it. That gave only ~2000×1350 px per frame and soft results.
+- Shot from the emulsion side, so the image is mirrored (edge printing
+  reads backwards).
+- Green-channel values: bare light and sprocket holes ~0.44, clear film
+  base ~0.14. The auto base estimate wrongly picked the bare light, and
+  auto-balance was thrown off by the light and the rebate.
+- The light source falls off ~10% toward the corners.
+- With a manual crop and the base picked from the gap between frames, the
+  conversion looked good. So the inversion and tone pipeline are sound.
+- **The user is rebuilding the scanning rig** (likely one frame per shot at
+  higher magnification). Wait for new sample scans before tuning defaults,
+  and ask about the new framing before assuming it.
+
+### Next steps
+1. When new scans arrive: flip/rotate setting, crop tool (manual), a film
+   base estimate that excludes bare light / sprocket holes (e.g. the
+   brightest plateau clearly below the light source), and auto-balance that
+   ignores areas outside the film.
+2. Stage 2: roll workflow (open folder, thumbnail strip, base once per roll,
+   auto-per-frame vs same-for-roll, copy/paste settings, batch export).
+3. Later: presets per film stock, auto-crop / frame detection, watch folder,
+   PyInstaller .exe. If several frames per shot remain common, add
+   frame splitting.
