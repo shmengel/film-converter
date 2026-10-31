@@ -1,0 +1,9 @@
+.venv/
+output/
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+# RAW samples are large; keep them out of git
+samples/
