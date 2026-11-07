@@ -20,6 +20,7 @@ ADJUSTMENTS = {
     "whites": (-100.0, 100.0, 0.0),      # + brightens whites, - dims them
     "highlights": (-100.0, 100.0, 0.0),
     "shadows": (-100.0, 100.0, 0.0),
+    "sharpening": (0.0, 100.0, 40.0),    # capture sharpening (unsharp mask)
 }
 
 
@@ -31,6 +32,8 @@ class AutoValues:
     d_black: float | None = None     # density (above base) mapped to output black
     d_white: float | None = None     # density mapped to output white
     gamma: float = 1.0               # midtone curve chosen by auto-balance
+    crop: tuple[float, float, float, float] | None = None  # detected frame (see framing.py)
+    rotation: int | None = None      # guessed upright rotation, 0 or 180 (see orientation.py)
 
 
 @dataclass
@@ -47,8 +50,15 @@ class Settings:
     black_from_base: bool = False
     # Fraction of each edge ignored by auto-balance (border, rebate, sprockets).
     analysis_margin: float = 0.08
-    # Crop rectangle normalized on the uncropped image, or None.
+    # Manual crop rectangle normalized on the uncropped image, or None.
     crop: tuple[float, float, float, float] | None = None
+    # Detect the frame edges automatically when there is no manual crop.
+    auto_crop: bool = True
+    # Output orientation, applied last (crop and base rect stay in camera
+    # coordinates). flip mirrors left-right (for scans shot from the emulsion
+    # side), then rotation turns the image clockwise by 0/90/180/270 degrees.
+    flip: bool = False
+    rotation: int = 0
 
     exposure: float = 0.0
     contrast: float = 0.0
@@ -56,6 +66,7 @@ class Settings:
     whites: float = 0.0
     highlights: float = 0.0
     shadows: float = 0.0
+    sharpening: float = 40.0
 
     auto: AutoValues = field(default_factory=AutoValues)
 
@@ -69,7 +80,10 @@ class Settings:
         kwargs = {k: v for k, v in data.items() if k in known}
         auto = kwargs.pop("auto", None) or {}
         auto_known = {f.name for f in fields(AutoValues)}
-        kwargs["auto"] = AutoValues(**{k: v for k, v in auto.items() if k in auto_known})
+        auto = {k: v for k, v in auto.items() if k in auto_known}
+        if auto.get("crop") is not None:
+            auto["crop"] = tuple(float(x) for x in auto["crop"])
+        kwargs["auto"] = AutoValues(**auto)
         for key in ("film_base_rect", "crop"):
             if kwargs.get(key) is not None:
                 kwargs[key] = tuple(float(x) for x in kwargs[key])
@@ -88,6 +102,12 @@ class Settings:
     @classmethod
     def load(cls, path: str | Path) -> "Settings":
         return cls.from_json(Path(path).read_text(encoding="utf-8"))
+
+    def effective_crop(self) -> tuple[float, float, float, float] | None:
+        """Manual crop if set, else the detected frame (if auto_crop is on)."""
+        if self.crop is not None:
+            return self.crop
+        return self.auto.crop if self.auto_crop else None
 
     def copy(self) -> "Settings":
         return replace(self, auto=replace(self.auto))

@@ -59,7 +59,12 @@ class BWNegative(FilmType):
         return float(np.median(region(working, rect)))
 
     def estimate_base(self, working):
-        # The clear base is the brightest part of a negative, except sprocket
+        # Best: the clear rebate between sprocket holes (never bare light).
+        from .framing import estimate_base
+        base = estimate_base(working)
+        if base is not None:
+            return base
+        # Fallback: the clear base is the brightest part of a negative, except sprocket
         # holes / gaps that show the bare light source (often clipped).
         # Ignore clipped pixels, then take a high percentile.
         vals = working[working < 0.98]

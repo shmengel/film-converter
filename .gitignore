@@ -7,3 +7,6 @@ build/
 dist/
 # RAW samples are large; keep them out of git
 samples/
+/session1/
+*.nef
+*.NEF

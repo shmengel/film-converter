@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import pipeline, raw_io
+from . import export, pipeline, raw_io
 from .settings import ADJUSTMENTS, CHANNELS, Settings
 
 
@@ -18,11 +18,15 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="filmconv", description="Convert B&W negative RAW scans to positives.")
     p.add_argument("inputs", nargs="+", type=Path, help="RAW files and/or folders (a roll)")
     p.add_argument("-o", "--output", type=Path, required=True, help="output folder")
-    p.add_argument("--format", nargs="+", choices=["tiff", "jpeg"], default=["tiff"])
+    p.add_argument("--format", nargs="+", choices=list(export.FORMATS), default=["tiff"])
     p.add_argument("--settings", type=Path, help="settings/preset JSON to start from")
     p.add_argument("--channel", choices=CHANNELS)
     p.add_argument("--base-rect", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
                    help="film base sample rectangle, normalized 0..1 on the first frame")
+    p.add_argument("--crop", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
+                   help="crop rectangle, normalized 0..1 on the camera image (before rotation)")
+    p.add_argument("--rotate", type=int, choices=[0, 90, 180, 270], help="rotate clockwise")
+    p.add_argument("--flip", action="store_true", help="mirror left-right (emulsion-side scans)")
     p.add_argument("--roll-levels", action="store_true",
                    help="use the first frame's auto levels for the whole roll")
     p.add_argument("--black-from-base", action="store_true", help="film base = pure black")
@@ -33,6 +37,12 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings.load(args.settings) if args.settings else Settings()
     if args.channel:
         settings.channel = args.channel
+    if args.crop:
+        settings.crop = tuple(args.crop)
+    if args.rotate is not None:
+        settings.rotation = args.rotate
+    if args.flip:
+        settings.flip = True
     if args.black_from_base:
         settings.black_from_base = True
     if args.roll_levels:

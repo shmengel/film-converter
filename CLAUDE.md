@@ -16,7 +16,8 @@ stage that can be swapped or extended).
 ## My scanning setup (where the input comes from)
 - Camera: Nikon D7000 (16 MP APS-C, 14-bit RAW, Nikon .NEF files,
   ~17–19 MB each).
-- Lens: Nikon 50mm macro (Micro-Nikkor).
+- Lens: Nikon 55mm Micro-Nikkor (manual, non-CPU: the EXIF focal length and
+  aperture come from the camera's "non-CPU lens data" menu, so don't trust them).
 - Rig: camera mounted on a drill-press stand pointing down; film sits in a
   tray over a light source. Height sets magnification; focus is fine-tuned
   from the laptop.
@@ -137,20 +138,115 @@ invert, auto-balance, adjust with sliders, export 16-bit TIFF / JPEG.
 - Green-channel values: bare light and sprocket holes ~0.44, clear film
   base ~0.14. The auto base estimate wrongly picked the bare light, and
   auto-balance was thrown off by the light and the rebate.
-- The light source falls off ~10% toward the corners.
+- The light source falls off ~10% toward the corners. (2026-11-08: the user says
+  it is steady, not flickering, but will be replaced soon with a better one.
+  Don't tune flat-field correction or base defaults to the current light.)
 - With a manual crop and the base picked from the gap between frames, the
   conversion looked good. So the inversion and tone pipeline are sound.
 - **The user is rebuilding the scanning rig** (likely one frame per shot at
   higher magnification). Wait for new sample scans before tuning defaults,
   and ask about the new framing before assuming it.
 
+### New rig, first conversion (2026-11-07, DSC_0008–0012)
+- One 35mm frame per shot, about 3755×2385 px of image area. A dark holder
+  masks everything outside the strip; bare light shows only through the
+  sprocket holes (green ~0.85, not clipped in DSC_0011). Clear base in the
+  rebate ~0.21. Image area spans about x 0.11–0.88, y 0.11–0.85. The frame
+  comes out upside down, so it needs `rotation=180`. Mirroring is still unconfirmed.
+- The five files are the same frame bracketed; DSC_0009 is about 3 stops under.
+- Added `Settings.flip` / `Settings.rotation` (applied last in `render`) and
+  CLI `--crop/--rotate/--flip`. Converting DSC_0011 with a manual crop and
+  the base from the rebate under the top holes looked good.
+
+### First full roll (2026-11-07, `session1/` DSC_0013–0047, 35 frames)
+- `session1/` is in the project root (git-ignored). Many files are hard links
+  to the originals in `Pictures\digiCamControl\Session1`, so keep it read-only.
+- EXIF: 1/2 s, ISO 200. Focal length 35 mm / f/5.6 are just the camera's
+  non-CPU lens setting; the real lens is the 55 mm Micro-Nikkor (user, 2026-11-08).
+- Framing moves from shot to shot. Some frames show part of the next frame;
+  sometimes the holder hides one hole row or a frame end. Orientation varies:
+  about half the frames are upside down. Not mirrored (Thai text in DSC_0034
+  reads correctly).
+- Sharpness: sprocket-hole edges measure about 5 px (10–90%) everywhere,
+  evenly across the frame. That is optical (focus, diffraction at effective
+  ~f/8.4, or vibration at 1/2 s), not the software. A sharp setup should
+  give about 2.5–3 px.
+- Film base (from the rebate) varies 0.18–0.29 between frames at identical
+  exposure. With per-frame auto levels it cancels out, but it matters for a
+  future "same levels for the whole roll" mode.
+- Added `filmconv/framing.py`:
+  - finds sprocket holes; film base comes from the rebate between holes
+  - pixels/mm from the 4.75 mm hole pitch
+  - frame = 24 mm centred between the hole rows (inner span measured at
+    25.3 mm); the ends are the clear gaps or holder edges whose spacing best
+    matches 36 mm
+  - correct on all 35 frames
+- Added `Settings.auto_crop` and `AutoValues.crop` (a manual `crop`
+  overrides it), DHT demosaic, and a capture-sharpening slider (USM radius
+  1 px at full resolution, default 40, skipped on the downscaled preview).
+- Output in `output/session1/`. 15 frames were exported with `--rotate 180`:
+  0023–25, 0028–31, 0033–39, 0046.
+
+### Stage 2 – roll GUI (2026-11-07, first version; user is trying it out)
+Goal: GUI-only app the user can hand to their dad (non-technical).
+- `filmconv/roll.py`: `Roll` (a folder of RAWs, `Settings` per frame,
+  persisted to `film-converter.json` in the roll folder; never touches the
+  RAWs) and `export_frames` (full-resolution export with progress/cancel;
+  analyzes unseen frames from their preview first).
+- `pipeline.rect_to_view/rect_from_view`: crop and base picking work on the
+  rotated view.
+- GUI: open folder (Ctrl+O), open file, or drag & drop. Thumbnail strip with
+  multi-select; previews prepared on 2 background threads. Rotate selected
+  ([ ]), adjust/auto crop, hold B for the negative, sliders, copy/paste/apply
+  to all (sliders only), export selected/all with progress, cancel and
+  "Open folder". "Advanced" (film base, channel, mirror) is collapsed.
+  Frames with edits get a ● mark.
+- Tested headlessly end to end on a 5-frame copy: about 0.3 s per preview,
+  about 1.3 s per JPEG export.
+
+### Stage 2b – workflow polish (2026-11-08)
+The user's target workflow: import RAWs → app shows cropped, auto-balanced
+positives → scroll and tweak crops and sliders → export what they like.
+- Launch: desktop and Start-menu shortcut "Film Converter" (runs
+  `.venv\Scripts\pythonw.exe app.py`, no console). Recreate with
+  `powershell -ExecutionPolicy Bypass -File tools\create_shortcut.ps1`.
+  The icon comes from `tools/make_icon.py` → `filmconv_gui/icon.ico`.
+- Crop editor ("Adjust crop", C): shows the whole scan as a positive with the
+  crop on top. Drag edges/corners, drag inside to move, or draw outside for a
+  new one; levels update on release. It stays on while moving between frames;
+  Enter/Esc finishes.
+- Export dialog (Ctrl+E): "This frame only" / "Choose frames" (click thumbnails
+  to toggle) / "All frames"; formats JPEG, TIFF 16-bit, TIFF 8-bit
+  (`_8bit.tif`), PNG 8-bit; optional contact sheet
+  (`filmconv/contact_sheet.py`): one JPEG `<roll>_contact_sheet.jpg`, a 6-wide
+  grid labelled with the frame number and file name. Formats, sheet and folder
+  are remembered per roll.
+- Window-wide keys go through an app event filter (hold B, Enter/Esc), so they
+  work while the strip has focus. The mouse wheel scrolls the strip sideways.
+
+### Fixes after first hands-on try (2026-11-08)
+- Open roll (Ctrl+O) now uses a file picker that shows the scans; picking any
+  one opens the whole folder. The Windows folder picker hid the NEFs, so the
+  folder looked empty. Dragging files or a folder onto the window also works.
+- Auto upright (`filmconv/orientation.py`): the top third of a photo is usually
+  brighter than the bottom, so the frame gets 0 or 180 degrees. On session1
+  NEFs: 33/35 correct (misses DSC_0032 water close-up, DSC_0038 pool). Stored
+  in `AutoValues.rotation`, guessed once per frame and applied only if the user
+  hasn't rotated it. Not counted as an edit (no dot). Portrait (90 degree)
+  frames are not detected.
+- Flip horizontal / vertical buttons (H / V) next to Rotate. They act on the
+  frame as shown and on all selected frames (`pipeline.flip_view`: rotation
+  becomes -r, or 180-r for vertical, and `flip` toggles). They replace the old
+  "Mirror" checkbox under Advanced. All single-key shortcuts ([ ] H V C, B) go
+  through the window's event filter, because the thumbnail strip swallowed
+  letters for type-to-search.
+- The earlier CLI export in `output/session1/` has DSC_0027 and DSC_0047
+  upside down; my manual rotation list missed them.
+
 ### Next steps
-1. When new scans arrive: flip/rotate setting, crop tool (manual), a film
-   base estimate that excludes bare light / sprocket holes (e.g. the
-   brightest plateau clearly below the light source), and auto-balance that
-   ignores areas outside the film.
-2. Stage 2: roll workflow (open folder, thumbnail strip, base once per roll,
-   auto-per-frame vs same-for-roll, copy/paste settings, batch export).
-3. Later: presets per film stock, auto-crop / frame detection, watch folder,
-   PyInstaller .exe. If several frames per shot remain common, add
-   frame splitting.
+1. Feedback from the user (and later their dad) on the roll GUI.
+2. Package as a Windows .exe (PyInstaller) for the dad, with no Python install.
+3. Same-levels-for-roll mode must handle the frame-to-frame base variation.
+   Optionally add flat-field correction for light fall-off.
+3. Later: presets per film stock, watch folder, PyInstaller .exe, 120/6x6
+   frame detection (no sprocket holes; needs another approach).
