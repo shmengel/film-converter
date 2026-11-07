@@ -10,3 +10,4 @@ samples/
 /session1/
 *.nef
 *.NEF
+/build/

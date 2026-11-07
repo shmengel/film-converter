@@ -243,6 +243,29 @@ positives → scroll and tweak crops and sliders → export what they like.
 - The earlier CLI export in `output/session1/` has DSC_0027 and DSC_0047
   upside down; my manual rotation list missed them.
 
+### Stage 3 – installer for the dad (2026-11-08, version 0.2.0)
+- `powershell -ExecutionPolicy Bypass -File tools\build.ps1 -TestRoll session1`
+  runs the tests, then a PyInstaller folder build (`packaging/film_converter.spec`,
+  `build/dist/`), then a self-test of the built exe on 2 RAWs, then Inno Setup
+  (`packaging/installer.iss`). Output: `build/installer/FilmConverter-Setup-<ver>.exe`
+  (~53 MB; ~205 MB installed). `build/` is git-ignored.
+- Version: `filmconv.__version__`. Bump it for each build you hand out. The
+  installer's AppId must never change (upgrades install over the old version).
+- The installer is per user (no admin prompt), installs to
+  `%LOCALAPPDATA%\Programs\Film Converter`, and adds a Start-menu entry, an
+  optional desktop shortcut and an uninstaller.
+- The spec drops ~70 MB the app doesn't use: OpenCV video I/O, opengl32sw,
+  Qt virtual keyboard (it pulls in Qt Quick/QML), Qt PDF. If a Qt feature is
+  missing in the exe but works in dev, check that DROP list first.
+- `"Film Converter.exe" --self-test <roll> <out>` exports the first frame in
+  every format plus a sheet and writes `self-test.txt`. Exe output is
+  bit-identical to the dev version, and Hebrew paths work.
+- Not code-signed: Windows SmartScreen shows "Windows protected your PC" on
+  first run ("More info" → "Run anyway").
+- Build tools: `requirements-build.txt` (PyInstaller); Inno Setup 6 via
+  `winget install JRSoftware.InnoSetup --scope user` (installed on this PC).
+- Help menu: keyboard shortcuts (F1) and About (version).
+
 ### Working notes for future sessions
 - GUI layout: `filmconv_gui/main_window.py` (window, modes positive /
   negative / crop / base, jobs), `widgets.py` (ImageView with crop editor,
@@ -263,7 +286,7 @@ positives → scroll and tweak crops and sliders → export what they like.
 
 ### Next steps
 1. User is testing the full workflow on real rolls; then their dad tries it.
-2. Package as a Windows .exe (PyInstaller) for the dad, with no Python install.
+2. Dad tries the installer (0.2.0); collect his feedback.
 3. The user is replacing the light source (current one: steady but uneven,
    needs 1/2 s exposures). With the new light, re-measure sharpness (hole-edge
    width) and recheck auto-crop and balance before tuning defaults or adding

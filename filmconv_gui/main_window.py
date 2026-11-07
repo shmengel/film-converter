@@ -327,6 +327,31 @@ class MainWindow(QMainWindow):
             ("Previous frame", "PgUp", lambda: self.step_frame(-1)),
             ("Next frame", "PgDown", lambda: self.step_frame(1)),
         ])
+        m = self.menuBar().addMenu("&Help")
+        self._add_actions(m, [
+            ("&Keyboard shortcuts", "F1", self.show_help),
+            ("&About", None, self.show_about),
+        ])
+
+    def show_help(self):
+        QMessageBox.information(self, "Keyboard shortcuts", (
+            "Ctrl+O\tOpen a roll (pick any scan in the folder)\n"
+            "PgUp / PgDn\tPrevious / next frame\n"
+            "[  ]\tRotate left / right\n"
+            "H  V\tFlip horizontal / vertical\n"
+            "C\tAdjust crop (Enter = done)\n"
+            "hold B\tShow the negative\n"
+            "Ctrl+Shift+C / V\tCopy / paste slider settings\n"
+            "Ctrl+E\tExport…\n\n"
+            "Ctrl+click or Shift+click thumbnails to work on several frames at once."))
+
+    def show_about(self):
+        import filmconv
+        QMessageBox.about(self, f"About {filmconv.APP_NAME}", (
+            f"<b>{filmconv.APP_NAME}</b> {filmconv.__version__}<br><br>"
+            "Turns DSLR scans of black-and-white negatives into positives.<br>"
+            "Your RAW files are never changed; edits are kept in "
+            "<i>film-converter.json</i> inside each roll folder."))
 
     def _add_actions(self, menu, items):
         for item in items:
