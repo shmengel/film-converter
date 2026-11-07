@@ -187,7 +187,7 @@ invert, auto-balance, adjust with sliders, export 16-bit TIFF / JPEG.
 - Output in `output/session1/`. 15 frames were exported with `--rotate 180`:
   0023–25, 0028–31, 0033–39, 0046.
 
-### Stage 2 – roll GUI (2026-11-07, first version; user is trying it out)
+### Stage 2 – roll GUI (2026-11-07; committed 2026-11-08 as 4c59329)
 Goal: GUI-only app the user can hand to their dad (non-technical).
 - `filmconv/roll.py`: `Roll` (a folder of RAWs, `Settings` per frame,
   persisted to `film-converter.json` in the roll folder; never touches the
@@ -195,11 +195,11 @@ Goal: GUI-only app the user can hand to their dad (non-technical).
   analyzes unseen frames from their preview first).
 - `pipeline.rect_to_view/rect_from_view`: crop and base picking work on the
   rotated view.
-- GUI: open folder (Ctrl+O), open file, or drag & drop. Thumbnail strip with
+- GUI (later changes are in the sections below): open a roll or drag & drop. Thumbnail strip with
   multi-select; previews prepared on 2 background threads. Rotate selected
   ([ ]), adjust/auto crop, hold B for the negative, sliders, copy/paste/apply
   to all (sliders only), export selected/all with progress, cancel and
-  "Open folder". "Advanced" (film base, channel, mirror) is collapsed.
+  "Open folder". "Advanced" (film base, base-is-black, channel) is collapsed.
   Frames with edits get a ● mark.
 - Tested headlessly end to end on a 5-frame copy: about 0.3 s per preview,
   about 1.3 s per JPEG export.
@@ -243,10 +243,32 @@ positives → scroll and tweak crops and sliders → export what they like.
 - The earlier CLI export in `output/session1/` has DSC_0027 and DSC_0047
   upside down; my manual rotation list missed them.
 
+### Working notes for future sessions
+- GUI layout: `filmconv_gui/main_window.py` (window, modes positive /
+  negative / crop / base, jobs), `widgets.py` (ImageView with crop editor,
+  FilmStrip, histogram), `export_dialog.py`. Per-frame state lives in
+  `Roll.frames[name]` (a `Settings`). `self.settings` is the current frame.
+- Headless GUI checks: drive `MainWindow` from a script with PySide6 (open a
+  copy of a few NEFs, pump events, call methods, `grab()` screenshots).
+  Monkeypatch `QMessageBox.exec`/`critical`, or modal dialogs hang the
+  script. Set `PYTHONIOENCODING=utf-8` (●/✓ in labels break the cp1252
+  console). Qt shortcuts don't fire in headless runs (the window is never
+  active), which is one more reason single keys go through the event filter.
+- Windows shell: don't put `
+` inside Python strings written through a bash
+  heredoc (it became a real newline twice). Edit the file directly instead.
+  Never `taskkill` all python.exe processes. Find the app's own process by
+  its command line (`app.py`).
+- `session1/` holds hard links to the user's originals: read-only.
+
 ### Next steps
-1. Feedback from the user (and later their dad) on the roll GUI.
+1. User is testing the full workflow on real rolls; then their dad tries it.
 2. Package as a Windows .exe (PyInstaller) for the dad, with no Python install.
-3. Same-levels-for-roll mode must handle the frame-to-frame base variation.
-   Optionally add flat-field correction for light fall-off.
-3. Later: presets per film stock, watch folder, PyInstaller .exe, 120/6x6
-   frame detection (no sprocket holes; needs another approach).
+3. The user is replacing the light source (current one: steady but uneven,
+   needs 1/2 s exposures). With the new light, re-measure sharpness (hole-edge
+   width) and recheck auto-crop and balance before tuning defaults or adding
+   flat-field correction.
+4. Same-levels-for-roll mode must handle the frame-to-frame base variation.
+5. Later: presets per film stock, watch folder, portrait (90 degree) upright
+   detection, 120/6x6 frame detection (no sprocket holes; needs another
+   approach).
