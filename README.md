@@ -1,57 +1,114 @@
 # Film Converter
 
-Converts RAW (NEF) scans of B&W film negatives into balanced positives.
-Desktop app for Windows and macOS (PySide6) with a command-line mode. See `CLAUDE.md` for
-the full spec and the detailed project status.
+**Turn DSLR "scans" of black-and-white film negatives into finished positives, automatically.**
 
-**How the conversion works, and its limits:** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
-(also in the app: Help → How it works).
+Photograph your negatives with a digital camera, open the folder, and Film
+Converter finds each frame, crops it, inverts it and balances the tones. You
+only fine-tune the frames you want and export. Free and open source, for
+Windows and Mac.
 
-## Setup (once)
+## ⬇️ Download
+
+### **[Get the latest version →](https://github.com/shmengel/film-converter/releases/latest)**
+
+| Your computer | File to download | Needs |
+|---|---|---|
+| **Windows** | `FilmConverter-Setup-<version>.exe` | Windows 10 or 11, 64-bit |
+| **Mac** | `FilmConverter-<version>-mac-arm64.dmg` | Apple Silicon (M1 or newer), macOS 14 Sonoma or newer |
+
+The files are under **Assets** at the bottom of the release page.
+[All versions](https://github.com/shmengel/film-converter/releases)
+
+### Installing
+
+**Windows:** run the Setup file. Windows may show *"Windows protected your
+PC"*, because the app isn't signed with a paid certificate. Click **More info**
+→ **Run anyway**. No administrator rights are needed.
+
+**Mac:** open the `.dmg` and drag **Film Converter** into **Applications**.
+The first time you open it, macOS blocks it, because the app isn't registered
+with Apple. Click **Done**, then go to **System Settings → Privacy & Security**,
+scroll down and click **Open Anyway**. This is needed only once. The `.dmg`
+contains step-by-step instructions.
+
+## What it does
+
+- **Open a whole roll at once:** pick any scan in a folder; every RAW file
+  in it appears in a film strip.
+- **Automatic per frame:** finds the frame using the sprocket holes and crops
+  away the border, then inverts using the film base and balances black, white
+  and midtones. Upside-down frames are turned upright.
+- **Your adjustments:** exposure, contrast, highlights, shadows, whites,
+  blacks and sharpening; crop, rotate and flip. Copy and paste settings
+  between frames, or apply them to the whole roll.
+- **Export:** JPEG, 16-bit or 8-bit TIFF, PNG, and a contact sheet of the roll.
+- **Non-destructive:** your RAW files are never changed.
+- Works with RAW files from most cameras (Nikon, Canon, Sony, Fujifilm,
+  Olympus, Panasonic, Pentax, DNG).
+
+Black-and-white **35 mm** film is supported now. Colour negatives and
+automatic cropping for 120 film are planned.
+
+## How it works
+
+**[How Film Converter works →](docs/HOW_IT_WORKS.md)**: a plain-language
+explanation of every step (finding the frame, inverting, balancing) and its
+limitations, with tips for scans that convert well. The same text is in the
+app under **Help → How it works**, and attached to every release.
+
+## Quick start
+
+1. Photograph your negatives in RAW: one frame per shot, with **both rows of
+   sprocket holes** and a bit of clear film between frames visible, and the
+   same manual exposure for the whole roll.
+2. Open Film Converter, press **Ctrl+O** (**⌘O** on Mac) and pick any scan in
+   the folder.
+3. Browse the frames, adjust what you like (hold **B** to see the negative),
+   then **Export** (Ctrl+E / ⌘E).
+
+**Help → Keyboard shortcuts** lists all the keys.
+
+---
+
+## For developers
+
+The app is written in Python: PySide6 (Qt) for the window, rawpy (LibRaw) to
+read RAW files, and NumPy / OpenCV for the processing.
+
+### Run from source
+
 ```
-py -3.12 -m venv .venv
+py -3.12 -m venv .venv                          # macOS: python3.12 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python app.py                     # the app
+.venv\Scripts\python -m filmconv.cli <files or roll folder> -o output --format tiff jpeg
+.venv\Scripts\python -m pytest                  # tests (synthetic negatives, no RAWs needed)
 ```
 
-## Run
-- GUI: `.venv\Scripts\python app.py` (optionally pass a .NEF path)
-- Command line: `.venv\Scripts\python -m filmconv.cli <files or roll folder> -o output --format tiff jpeg`
-  (`--help` lists all options: channel, film base rectangle, sliders, roll levels)
-- Tests: `.venv\Scripts\python -m pytest`
+### Build the installers
 
-## Building the apps
-- Windows installer: `powershell -ExecutionPolicy Bypass -File toolsuild.ps1 [-TestRoll <folder>]`
-- macOS .dmg (Apple Silicon, macOS 14+): must be built on a Mac. Either run
-  `bash tools/build_mac.sh [test roll folder]` on a Mac with Python 3.12, or
-  push to GitHub and run the "Build macOS app" workflow (Actions tab); the .dmg
-  appears under the run's Artifacts. The app is unsigned; see
-  `packaging/mac_first_launch.txt` for the one-time "Open Anyway" step.
+- **Windows:** `powershell -ExecutionPolicy Bypass -File tools\build.ps1 [-TestRoll <folder>]`
+  (needs Inno Setup 6) → `build\installer\FilmConverter-Setup-<version>.exe`
+- **Mac:** must be built on a Mac: `bash tools/build_mac.sh` → a `.dmg` in
+  `build/installer/`. Or let GitHub build it: run the **Build macOS app**
+  workflow from the Actions tab (or push a tag like `v0.2.1`); the `.dmg` is
+  under the run's Artifacts.
 
-## Using the GUI
-1. **Ctrl+O** opens a RAW file. **B** switches between the negative and the positive.
-2. **Film base → Pick on image:** drag a rectangle over clear film, such as the
-   gap between frames or the edge strip. Don't include sprocket holes or
-   bare light. **Auto** estimates the base instead.
-3. Adjust with the sliders. They all work in "positive" directions: moving
-   right makes the image brighter or the effect stronger. **Auto balance**
-   recalculates the levels. **Reset sliders** sets the sliders back to zero.
-4. Choose TIFF (16-bit) and/or JPEG and an output folder, then click
-   **Export full resolution**.
-   The original RAW files are never modified.
-5. File → Save/Load settings stores all settings as JSON.
+### Code layout
 
-## Status
-- **Stage 1 (done):** single-frame conversion with film base picking,
-  density-based inversion, auto-balance, sliders, histogram, TIFF/JPEG export, CLI.
-- **First real test:** the inversion works well once the image is cropped
-  to one frame and the base is picked by hand. The test scan showed several
-  frames per shot, mirrored film and soft detail. The scanning rig is being
-  rebuilt before the next round.
-- **Next:** flip/rotate, crop tool, a better automatic film-base estimate,
-  then the roll workflow (stage 2).
+| Folder | Contents |
+|---|---|
+| `filmconv/` | Processing core, no GUI code: RAW reading, frame detection, inversion, tone, export, command line |
+| `filmconv_gui/` | The PySide6 app |
+| `tests/` | pytest tests |
+| `docs/` | User documentation |
+| `packaging/`, `tools/` | Installer builds, licence notices |
 
-## Layout
-- `filmconv/` – processing core, no Qt (settings, RAW reading, film-type stage, tone stage, export, CLI)
-- `filmconv_gui/` – PySide6 GUI
-- `tests/` – pytest tests on synthetic negatives
-- `samples/` – your test NEFs (read-only, not in git); `output/` – test results (not in git)
+`CLAUDE.md` holds the full design notes and project history.
+
+## Licence
+
+Film Converter is released under the [MIT licence](LICENSE). The installers
+include open-source components under their own licences (Qt / PySide6 and
+LibRaw under the LGPL, among others). See
+[THIRD_PARTY_NOTICES.txt](packaging/licenses/THIRD_PARTY_NOTICES.txt).

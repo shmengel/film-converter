@@ -24,6 +24,7 @@ def licence_files():
     folder next to the program files."""
     from importlib.metadata import distribution
     out = [(str(p), "licenses") for p in (ROOT / "packaging" / "licenses").glob("*.txt")]
+    out.append((str(ROOT / "LICENSE"), "licenses/film-converter"))      # our own (MIT)
     for pkg in ("numpy", "opencv-python-headless", "pillow", "rawpy", "tifffile",
                 "pyside6", "shiboken6"):
         dist = distribution(pkg)

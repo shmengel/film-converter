@@ -1,7 +1,8 @@
 Film Converter - third-party software
 ====================================
 
-Film Converter is free to use. It is built with the open-source components
+Film Converter itself is free, open-source software under the MIT licence
+(film-converter/LICENSE). It is built with the open-source components
 below, which are redistributed unmodified under their own licences. Their
 licence texts are in this "licenses" folder (one subfolder per package).
 
