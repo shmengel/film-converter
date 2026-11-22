@@ -76,6 +76,7 @@ mkdir -p "$STAGE"
 ditto "$APP" "$STAGE/Film Converter.app"            # ditto keeps symlinks and the signature
 ln -s /Applications "$STAGE/Applications"
 cp packaging/mac_first_launch.txt "$STAGE/First launch - read me.txt"
+cp docs/HOW_IT_WORKS.md "$STAGE/How it works.md"
 DMG="build/installer/FilmConverter-$VERSION-mac-$ARCH.dmg"
 rm -f "$DMG"
 hdiutil create -quiet -volname "Film Converter" -srcfolder "$STAGE" -ov -format UDZO "$DMG"

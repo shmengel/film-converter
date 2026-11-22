@@ -313,6 +313,16 @@ D = log10(base/T), mentioned in a comment in `film_types.py`).
   fails if it reappears or the licences are missing.
 - Not legal advice; the user was told so.
 
+### How-it-works document (2026-11-22)
+`docs/HOW_IT_WORKS.md`: plain-language explanation of every step plus a
+limitations section, for users. Keep it in sync when the algorithms change.
+It is bundled into the app (Help → How it works renders it with
+QTextBrowser.setMarkdown, minus the Mermaid diagram and contents list), put
+into the .dmg as "How it works.md", and **must be attached to every GitHub
+Release** (the user wants people with only release access to be able to
+read it). If a public releases-only repo is created, use it as that repo's
+README too.
+
 ### Working notes for future sessions
 - GUI layout: `filmconv_gui/main_window.py` (window, modes positive /
   negative / crop / base, jobs), `widgets.py` (ImageView with crop editor,

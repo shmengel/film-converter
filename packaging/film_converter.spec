@@ -50,7 +50,7 @@ a = Analysis(
     [str(ROOT / "app.py")],
     pathex=[str(ROOT)],
     binaries=collect_dynamic_libs("rawpy"),          # LibRaw DLL / dylib
-    datas=[(ICO, "filmconv_gui")] + licence_files(),
+    datas=[(ICO, "filmconv_gui"), (str(ROOT / "docs" / "HOW_IT_WORKS.md"), "docs")] + licence_files(),
     hiddenimports=[],
     excludes=[
         "tkinter", "pytest", "_pytest", "matplotlib", "scipy", "IPython", "pandas",

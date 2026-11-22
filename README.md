@@ -4,6 +4,9 @@ Converts RAW (NEF) scans of B&W film negatives into balanced positives.
 Desktop app for Windows and macOS (PySide6) with a command-line mode. See `CLAUDE.md` for
 the full spec and the detailed project status.
 
+**How the conversion works, and its limits:** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
+(also in the app: Help → How it works).
+
 ## Setup (once)
 ```
 py -3.12 -m venv .venv

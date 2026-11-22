@@ -332,6 +332,7 @@ class MainWindow(QMainWindow):
         m = self.menuBar().addMenu("&Help")
         self._add_actions(m, [
             ("&Keyboard shortcuts", "F1", self.show_help),
+            ("&How it works", None, self.show_how_it_works),
             ("Open-source &licences", None, self.open_licences),
             ("&About", None, self.show_about),
         ])
@@ -357,6 +358,32 @@ class MainWindow(QMainWindow):
             "<i>film-converter.json</i> inside each roll folder.<br><br>"
             "Built with Qt / PySide6 (LGPL-3.0), LibRaw, OpenCV, NumPy, Pillow and "
             "tifffile. Help → Open-source licences shows their licences."))
+
+    def show_how_it_works(self):
+        """docs/HOW_IT_WORKS.md (bundled with the app), rendered in a window."""
+        import re
+        import sys
+        from PySide6.QtWidgets import QTextBrowser
+        meipass = getattr(sys, "_MEIPASS", None)
+        root = Path(meipass) if meipass else Path(__file__).resolve().parent.parent
+        try:
+            text = (root / "docs" / "HOW_IT_WORKS.md").read_text(encoding="utf-8")
+        except OSError:
+            QMessageBox.warning(self, "How it works", "The explanation file is missing.")
+            return
+        # Qt can't draw the Mermaid diagram (GitHub can); drop it and the
+        # contents list, whose links only work on GitHub.
+        text = re.sub(r"```mermaid.*?```\s*", "", text, flags=re.S)
+        text = re.sub(r"\*\*Contents\*\*.*?^---$", "", text, count=1, flags=re.S | re.M)
+        dlg = QDialog(self)
+        dlg.setWindowTitle("How Film Converter works")
+        dlg.resize(820, 760)
+        view = QTextBrowser(dlg)
+        view.setOpenExternalLinks(True)
+        view.setMarkdown(text)
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(view)
+        dlg.exec()
 
     def open_licences(self):
         """The licence texts that ship with the app (packaging/licenses in the source tree)."""
