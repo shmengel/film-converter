@@ -275,7 +275,7 @@ account): first launch needs System Settings → Privacy & Security → "Open An
 - PyInstaller can't cross-compile; the Mac app must be built on a Mac.
   `bash tools/build_mac.sh [test roll]` (own `.venv-mac`): tests → PyInstaller
   `.app` → `--smoke-test` of the built app → `.dmg` in `build/installer/`.
-- `.github/workflows/build-mac.yml` runs that script on a `macos-14` runner
+- `.github/workflows/build-mac.yml` runs that script on a `macos-15` runner (macos-14 is retired)
   (manual run or `v*` tag) and uploads the .dmg. The user will create a new
   GitHub account for this later; nothing has been pushed yet (no remote).
 - `app.py --smoke-test <out>`: no RAWs needed. Loads LibRaw, converts a

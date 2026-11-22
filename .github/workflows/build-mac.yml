@@ -12,8 +12,9 @@ on:
 
 jobs:
   build-mac:
-    # macos-14 = Apple Silicon (arm64) with macOS 14, the oldest macOS the app supports.
-    runs-on: macos-14
+    # Apple Silicon (arm64). macos-14 runners are retired; the app still supports
+    # macOS 14+, since it only bundles prebuilt macOS 14 wheels (nothing is compiled).
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
