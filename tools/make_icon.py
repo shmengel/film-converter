@@ -33,3 +33,7 @@ if __name__ == "__main__":
     draw().resize((256, 256), Image.LANCZOS).save(
         out, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     print("wrote", out)
+    # macOS app icon (Pillow writes .icns on any OS; it makes the smaller sizes).
+    icns = out.with_suffix(".icns")
+    draw().resize((1024, 1024), Image.LANCZOS).save(icns)
+    print("wrote", icns)

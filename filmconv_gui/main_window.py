@@ -19,9 +19,11 @@ from filmconv.roll import Roll, export_frames
 from filmconv.settings import ADJUSTMENTS, CHANNELS, AutoValues, Settings
 
 from .export_dialog import ALL, ExportDialog
-from .widgets import FilmStrip, HistogramWidget, ImageView
+from .widgets import MAC, FilmStrip, HistogramWidget, ImageView, keys_text
 
-RAW_FILTER = "RAW files (" + " ".join(f"*{e}" for e in sorted(raw_io.RAW_EXTENSIONS)) + ")"
+# File-dialog filters are case-sensitive on macOS, so list .nef and .NEF there.
+RAW_FILTER = "RAW files (" + " ".join(
+    f"*{x}" for e in sorted(raw_io.RAW_EXTENSIONS) for x in ((e, e.upper()) if MAC else (e,))) + ")"
 SLIDER_STEPS = 100   # slider ints per settings unit for exposure (EV)
 CROP_COLOR, BASE_COLOR = QColor(80, 220, 120), QColor(255, 80, 60)
 # Settings fields that are "user edits" (shown with a dot in the strip).
@@ -218,10 +220,10 @@ class MainWindow(QMainWindow):
         form.addRow(row)
         row = QHBoxLayout()
         self.btn_copy = QPushButton("Copy")
-        self.btn_copy.setToolTip("Copy this frame's slider settings (Ctrl+Shift+C)")
+        self.btn_copy.setToolTip(keys_text("Copy this frame's slider settings (Ctrl+Shift+C)"))
         self.btn_copy.clicked.connect(self.on_copy)
         self.btn_paste = QPushButton("Paste")
-        self.btn_paste.setToolTip("Paste slider settings onto the selected frames (Ctrl+Shift+V)")
+        self.btn_paste.setToolTip(keys_text("Paste slider settings onto the selected frames (Ctrl+Shift+V)"))
         self.btn_paste.clicked.connect(self.on_paste)
         btn_all = QPushButton("Apply to all")
         btn_all.setToolTip("Use this frame's slider settings on every frame of the roll")
@@ -243,7 +245,7 @@ class MainWindow(QMainWindow):
         g = QGroupBox("Export")
         gl = QVBoxLayout(g)
         self.btn_export = QPushButton("Export…")
-        self.btn_export.setToolTip("Choose frames, formats, contact sheet and folder  (Ctrl+E)")
+        self.btn_export.setToolTip(keys_text("Choose frames, formats, contact sheet and folder  (Ctrl+E)"))
         self.btn_export.setStyleSheet("font-weight: bold; padding: 6px;")
         self.btn_export.clicked.connect(lambda: self.open_export_dialog())
         gl.addWidget(self.btn_export)
@@ -334,7 +336,7 @@ class MainWindow(QMainWindow):
         ])
 
     def show_help(self):
-        QMessageBox.information(self, "Keyboard shortcuts", (
+        QMessageBox.information(self, "Keyboard shortcuts", keys_text(
             "Ctrl+O\tOpen a roll (pick any scan in the folder)\n"
             "PgUp / PgDn\tPrevious / next frame\n"
             "[  ]\tRotate left / right\n"

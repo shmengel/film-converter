@@ -1,7 +1,7 @@
 # Film Converter
 
 Converts RAW (NEF) scans of B&W film negatives into balanced positives.
-Windows desktop app (PySide6) with a command-line mode. See `CLAUDE.md` for
+Desktop app for Windows and macOS (PySide6) with a command-line mode. See `CLAUDE.md` for
 the full spec and the detailed project status.
 
 ## Setup (once)
@@ -15,6 +15,14 @@ py -3.12 -m venv .venv
 - Command line: `.venv\Scripts\python -m filmconv.cli <files or roll folder> -o output --format tiff jpeg`
   (`--help` lists all options: channel, film base rectangle, sliders, roll levels)
 - Tests: `.venv\Scripts\python -m pytest`
+
+## Building the apps
+- Windows installer: `powershell -ExecutionPolicy Bypass -File toolsuild.ps1 [-TestRoll <folder>]`
+- macOS .dmg (Apple Silicon, macOS 14+): must be built on a Mac. Either run
+  `bash tools/build_mac.sh [test roll folder]` on a Mac with Python 3.12, or
+  push to GitHub and run the "Build macOS app" workflow (Actions tab); the .dmg
+  appears under the run's Artifacts. The app is unsigned; see
+  `packaging/mac_first_launch.txt` for the one-time "Open Anyway" step.
 
 ## Using the GUI
 1. **Ctrl+O** opens a RAW file. **B** switches between the negative and the positive.

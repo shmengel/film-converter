@@ -25,7 +25,10 @@ def thumbnail(img: np.ndarray, size: int = CELL) -> np.ndarray:
 
 
 def _font(size: int, bold: bool = False):
-    for name in (("segoeuib.ttf", "arialbd.ttf") if bold else ("segoeui.ttf", "arial.ttf")):
+    # Windows names first, then macOS (Pillow searches the system font folders).
+    names = (("segoeuib.ttf", "arialbd.ttf", "Arial Bold.ttf", "HelveticaNeue.ttc") if bold else
+             ("segoeui.ttf", "arial.ttf", "Arial.ttf", "HelveticaNeue.ttc"))
+    for name in names:
         try:
             return ImageFont.truetype(name, size)
         except OSError:

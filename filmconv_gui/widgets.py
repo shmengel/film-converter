@@ -1,10 +1,26 @@
 """Reusable Qt widgets: image preview with rectangle picking, histogram, film strip."""
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QAbstractItemView, QListView, QListWidget, QListWidgetItem, QSizePolicy, QWidget
+
+
+MAC = sys.platform == "darwin"
+
+
+def keys_text(text: str) -> str:
+    """Shortcut names as the user sees them. Qt already maps Ctrl to the
+    Command key on macOS; this only fixes the words in labels and help."""
+    if not MAC:
+        return text
+    for a, b in (("Ctrl+click", "⌘-click"), ("Ctrl+Shift+", "⇧⌘"), ("Ctrl+", "⌘"),
+                 ("PgUp / PgDn", "fn↑ / fn↓")):
+        text = text.replace(a, b)
+    return text
 
 
 def to_qimage(gray8: np.ndarray) -> QImage:
@@ -39,7 +55,7 @@ class ImageView(QWidget):
         self.pick_mode = False
         # Outlines to draw: (normalized rect, QColor), in image coordinates.
         self.overlays: list[tuple[tuple, QColor]] = []
-        self.placeholder = "Open a roll: press Ctrl+O and pick any scan in the folder,\nor drag the scans (or their folder) here"
+        self.placeholder = keys_text("Open a roll: press Ctrl+O and pick any scan in the folder,\nor drag the scans (or their folder) here")
         self.crop_mode = False
         self.crop_rect: tuple | None = None
         self._crop_drag = None      # (grab, start point, rect at start)

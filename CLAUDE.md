@@ -266,6 +266,35 @@ positives → scroll and tweak crops and sliders → export what they like.
   `winget install JRSoftware.InnoSetup --scope user` (installed on this PC).
 - Help menu: keyboard shortcuts (F1) and About (version).
 
+### Stage 4 – macOS version (2026-11-22, prepared, NOT yet built on a Mac)
+Target: Apple Silicon Macs, macOS 14+ (numpy 2.5 and PySide6 6.12 wheels need
+14+; all pinned packages have macOS arm64 wheels, checked with
+`pip download --platform macosx_14_0_arm64`). Unsigned (no Apple Developer
+account): first launch needs System Settings → Privacy & Security → "Open Anyway"
+(`packaging/mac_first_launch.txt` is put into the .dmg).
+- PyInstaller can't cross-compile; the Mac app must be built on a Mac.
+  `bash tools/build_mac.sh [test roll]` (own `.venv-mac`): tests → PyInstaller
+  `.app` → `--smoke-test` of the built app → `.dmg` in `build/installer/`.
+- `.github/workflows/build-mac.yml` runs that script on a `macos-14` runner
+  (manual run or `v*` tag) and uploads the .dmg. The user will create a new
+  GitHub account for this later; nothing has been pushed yet (no remote).
+- `app.py --smoke-test <out>`: no RAWs needed. Loads LibRaw, converts a
+  synthetic negative to every format + sheet, opens the window off screen.
+  Passes on Windows (dev and built exe).
+- Spec: one file for both OSes. Windows keeps the DROP list. On macOS
+  nothing is dropped (OpenCV links its video libs directly; Qt frameworks are
+  signed folders). `BUNDLE` adds Info.plist: bundle id
+  `com.yoavengel.filmconverter` (never change it), RAW "Open With",
+  HiDPI. Icon `filmconv_gui/icon.icns` comes from `tools/make_icon.py`.
+- Code: `app.py` handles Qt FileOpen events (Finder "Open With" or a drop on
+  the Dock icon). `widgets.keys_text()` shows ⌘/⇧⌘ instead of Ctrl in labels
+  and help on macOS (Qt already maps Ctrl shortcuts to Cmd). File-dialog
+  filters list `.nef` and `.NEF` on macOS (case-sensitive there). The contact
+  sheet font falls back to Arial / Helvetica Neue on macOS.
+- Expect the first real Mac build to need small fixes (it has never run).
+  Retina: previews are 1600 px, so a full-screen preview on a 2x display is
+  slightly upscaled. Raise `PREVIEW_MAX_SIZE` only if it looks soft.
+
 ### Working notes for future sessions
 - GUI layout: `filmconv_gui/main_window.py` (window, modes positive /
   negative / crop / base, jobs), `widgets.py` (ImageView with crop editor,
@@ -292,6 +321,8 @@ positives → scroll and tweak crops and sliders → export what they like.
    width) and recheck auto-crop and balance before tuning defaults or adding
    flat-field correction.
 4. Same-levels-for-roll mode must handle the frame-to-frame base variation.
-5. Later: presets per film stock, watch folder, portrait (90 degree) upright
+5. macOS: once the new GitHub account exists, push, run "Build macOS app",
+   fix whatever the first build hits, then try the .dmg on the Mac.
+6. Later: presets per film stock, watch folder, portrait (90 degree) upright
    detection, 120/6x6 frame detection (no sprocket holes; needs another
    approach).

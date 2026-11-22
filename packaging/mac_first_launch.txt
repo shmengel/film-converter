@@ -1,0 +1,33 @@
+Film Converter for Mac
+======================
+
+Install
+  Drag "Film Converter" onto the "Applications" folder in this window.
+  Then eject the disk image ("Film Converter" in Finder's sidebar).
+
+First launch (only once)
+  The app isn't registered with Apple (that costs $99 a year), so macOS
+  blocks it the first time with a message like
+  "Film Converter Not Opened" or "Apple could not verify ...".
+  This is expected. To allow it:
+
+  1. Open the app from Applications. When the warning appears, click "Done"
+     (or "OK"). Do NOT click "Move to Trash".
+  2. Open System Settings > Privacy & Security, and scroll down to the
+     "Security" section. Next to "Film Converter was blocked ...", click
+     "Open Anyway", then confirm with your password or Touch ID.
+  3. The app opens. From now on it opens normally.
+
+  (On macOS 14 Sonoma you can instead right-click the app, choose "Open",
+  then "Open" again.)
+
+  If macOS asks whether Film Converter may access files in your Documents,
+  Desktop or Downloads folder, click "Allow": that's where your scans are.
+
+Requirements
+  A Mac with Apple Silicon (M1 or newer) and macOS 14 Sonoma or newer.
+
+Using it
+  Press Cmd+O and pick any scan in a roll folder (or drag the folder onto
+  the window). Help > Keyboard shortcuts lists all shortcuts.
+  Your RAW files are never changed.
