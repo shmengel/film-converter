@@ -342,10 +342,11 @@ README too.
   resolution can't show on the 1/4-size preview.
 - `tests/test_gui.py`: offscreen MainWindow tests with synthetic previews.
   They patch QMessageBox (modal dialogs would hang). `tests/test_cli.py`: CLI.
-- Version 0.3.0. Releasing: bump `filmconv.__version__`, merge to master, then
-  `git tag vX.Y.Z && git push origin vX.Y.Z`. The "Build macOS app" workflow
-  checks the tag matches the version, builds and tests, and creates a DRAFT
-  GitHub Release with the .dmg and HOW_IT_WORKS.md; publish it on GitHub.
+- Version 0.3.0. Releasing: bump `filmconv.__version__` in the PR. On merge to
+  master, the "Build macOS app" workflow sees a version with no release yet
+  (drafts count), builds and tests, and creates a DRAFT GitHub Release
+  `vX.Y.Z` with the .dmg and HOW_IT_WORKS.md. Publishing it on GitHub creates
+  the tag. Merges that keep a released version skip the Mac build.
   The Windows installer is still built by hand (`tools\build.ps1`) and can be
   added to the draft with `gh release upload vX.Y.Z <installer.exe>`.
 

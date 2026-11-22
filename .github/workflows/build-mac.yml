@@ -1,23 +1,64 @@
 # Builds the macOS app (.dmg) on a GitHub-hosted Apple Silicon Mac.
-# Run it from the repo's "Actions" tab ("Build macOS app" > "Run workflow"):
+#
+# Releasing: bump filmconv.__version__ in a PR. When that PR is merged into
+# master, this workflow sees a version with no release yet, builds and tests
+# the app, and creates a DRAFT GitHub Release "vX.Y.Z" with the .dmg and
+# HOW_IT_WORKS.md attached. Review it on GitHub and click "Publish release"
+# (publishing creates the vX.Y.Z tag on the merged commit).
+# Pushes to master that keep an already released version only run the cheap
+# version check, not the Mac build (macOS minutes cost 10x on private repos).
+#
+# Test build without releasing: Actions tab > "Build macOS app" > "Run workflow";
 # the .dmg is then under the finished run's "Artifacts" (downloaded as a .zip).
-# Or release a version: bump filmconv.__version__, then
-#   git tag v0.3.0 && git push origin v0.3.0
-# which also creates a DRAFT GitHub Release with the .dmg and HOW_IT_WORKS.md
-# attached. Review it on GitHub and click "Publish release".
 # Repo: github.com/shmengel/film-converter (private).
 name: Build macOS app
 
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    branches: [master]
 
 permissions:
   contents: write     # creating the draft release
 
+concurrency:
+  group: build-mac-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is this version released yet?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(python3 -c 'import filmconv; print(filmconv.__version__)')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # The releases list includes drafts, so a second merge with the same
+          # version doesn't make a second draft.
+          # Read the whole list first: under pipefail, `gh | grep -q` can fail
+          # when grep stops early.
+          tags="$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[].tag_name')"
+          if grep -qxF "v$version" <<< "$tags"; then
+            echo "v$version already has a release"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            echo "v$version is new: building a draft release"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-mac:
+    needs: version
+    if: needs.version.outputs.release == 'true' || github.event_name == 'workflow_dispatch'
     # Apple Silicon (arm64). macos-14 runners are retired; the app still supports
     # macOS 14+, since it only bundles prebuilt macOS 14 wheels (nothing is compiled).
     runs-on: macos-15
@@ -30,14 +71,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check the tag matches the app version
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          version="$(python -c 'import filmconv; print(filmconv.__version__)')"
-          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match filmconv.__version__ ($version)"; exit 1
-          fi
-
       - name: Build, test and package
         env:
           PYTHON: ${{ steps.py.outputs.python-path }}
@@ -49,14 +82,15 @@ jobs:
           path: build/installer/*.dmg
           if-no-files-found: error
 
-      - name: Draft a GitHub Release (version tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Draft the GitHub Release
+        if: needs.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
           # HOW_IT_WORKS.md must be attached to every release (see CLAUDE.md).
-          gh release create "$GITHUB_REF_NAME" build/installer/*.dmg docs/HOW_IT_WORKS.md \
-            --draft --title "Film Converter ${GITHUB_REF_NAME#v}" --generate-notes
+          gh release create "v$VERSION" build/installer/*.dmg docs/HOW_IT_WORKS.md \
+            --draft --target "$GITHUB_SHA" --title "Film Converter $VERSION" --generate-notes
 
       - name: Smoke-test report (on failure)
         if: failure()
