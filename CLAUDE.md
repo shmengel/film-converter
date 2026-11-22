@@ -324,21 +324,24 @@ read it). If a public releases-only repo is created, use it as that repo's
 README too.
 
 ### GitHub, release 0.2.1 (2026-11-22)
-- Repo `shmengel/film-converter` (private, fresh). The first repo was renamed
+- Repo `shmengel/film-converter`: **public since 2026-11-22** (fresh repo). The first repo was renamed
   to `shmengel/film-converter-old` (private, keep private): its PR refs hold old
   commits with the user's work email, which must never become public.
 - Commits use shmengel's noreply address (repo-local `user.email`); the
   global git email on this PC is a work address. Never push commits with it.
-- Release **v0.2.1** published (repo still private): Windows installer, Mac
+- Release **v0.2.1** published: Windows installer, Mac
   .dmg, HOW_IT_WORKS.md. Code licence: MIT (`LICENSE`).
 - Collaborator: the user's friend, GitHub `s0l0mon4A`. Needs to be re-invited
   to the new repo (the user does it) and must re-clone (his old clone has the
   old history). His PR #1 (fixes, undo, release-on-merge, v0.3.0) is open and
   untested; don't approve or merge it until the user says so. It conflicts with
   master only in `filmconv/__init__.py` (version).
-- **Before making the repo public**: the friend must OK his personal email
-  in PR #1's commit `474996c` (or it gets rewritten first). Then:
-  `gh repo edit shmengel/film-converter --visibility public --accept-visibility-change-consequences`.
+- The friend OK'd his personal email being visible in PR #1's commit.
+  shmengel has "Keep my email addresses private" on (GitHub's PR test-merge
+  commits had used the account's Gmail before that). Before pushing, check
+  that new commits only use noreply addresses.
+- Homepage link = releases/latest; topics set. Each release: Windows
+  installer (built here), Mac .dmg (Actions artifact), HOW_IT_WORKS.md.
 - Always `git fetch` and compare before pushing; never force-push a shared
   branch without the user's OK (a force-push once closed the friend's PR).
 
@@ -370,7 +373,7 @@ README too.
 4. Same-levels-for-roll mode must handle the frame-to-frame base variation.
 5. macOS: try the .dmg on a real Mac (first launch, real roll, export,
    Cmd shortcuts, Retina sharpness).
-6. Go public once the friend OKs his email; then test and merge his PR (0.3.0).
+6. Test and merge the friend's PR (0.3.0).
 7. Later: presets per film stock, watch folder, portrait (90 degree) upright
    detection, 120/6x6 frame detection (no sprocket holes; needs another
    approach).
