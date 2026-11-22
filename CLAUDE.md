@@ -266,7 +266,7 @@ positives → scroll and tweak crops and sliders → export what they like.
   `winget install JRSoftware.InnoSetup --scope user` (installed on this PC).
 - Help menu: keyboard shortcuts (F1) and About (version).
 
-### Stage 4 – macOS version (2026-11-22, prepared, NOT yet built on a Mac)
+### Stage 4 – macOS version (2026-11-22; CI build passes, not yet tried on a real Mac)
 Target: Apple Silicon Macs, macOS 14+ (numpy 2.5 and PySide6 6.12 wheels need
 14+; all pinned packages have macOS arm64 wheels, checked with
 `pip download --platform macosx_14_0_arm64`). Unsigned (no Apple Developer
@@ -277,7 +277,9 @@ account): first launch needs System Settings → Privacy & Security → "Open An
   `.app` → `--smoke-test` of the built app → `.dmg` in `build/installer/`.
 - `.github/workflows/build-mac.yml` runs that script on a `macos-15` runner (macos-14 is retired)
   (manual run or `v*` tag) and uploads the .dmg. The user will create a new
-  GitHub account for this later; nothing has been pushed yet (no remote).
+  GitHub account `shmengel`: private repo `shmengel/film-converter`, remote
+  over HTTPS (this PC's SSH key belongs to the old account `yoav-hue`).
+  First run passed (tests, smoke test on darwin) in ~1 min; .dmg is 101 MB.
 - `app.py --smoke-test <out>`: no RAWs needed. Loads LibRaw, converts a
   synthetic negative to every format + sheet, opens the window off screen.
   Passes on Windows (dev and built exe).
@@ -321,8 +323,8 @@ account): first launch needs System Settings → Privacy & Security → "Open An
    width) and recheck auto-crop and balance before tuning defaults or adding
    flat-field correction.
 4. Same-levels-for-roll mode must handle the frame-to-frame base variation.
-5. macOS: once the new GitHub account exists, push, run "Build macOS app",
-   fix whatever the first build hits, then try the .dmg on the Mac.
+5. macOS: try the .dmg on a real Mac (first launch, real roll, export,
+   Cmd shortcuts, Retina sharpness).
 6. Later: presets per film stock, watch folder, portrait (90 degree) upright
    detection, 120/6x6 frame detection (no sprocket holes; needs another
    approach).
