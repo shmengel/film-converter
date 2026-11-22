@@ -40,7 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.crop:
         settings.crop = tuple(args.crop)
     if args.rotate is not None:
-        settings.rotation = args.rotate
+        # Marking the rotation as already decided stops the per-frame upright guess.
+        settings.rotation = settings.auto.rotation = args.rotate
     if args.flip:
         settings.flip = True
     if args.black_from_base:
@@ -58,15 +59,24 @@ def main(argv: list[str] | None = None) -> int:
         print("No RAW files found.", file=sys.stderr)
         return 1
 
+    first = None   # auto values of the first frame
     for i, path in enumerate(files, 1):
-        preview = pipeline.to_working(raw_io.load_preview(path), settings)
-        if i == 1 and args.base_rect:
-            settings.film_base_rect = tuple(args.base_rect)
-        # The base is sampled once (first frame) and kept for the whole roll.
-        pipeline.update_auto(preview, settings)
-        settings.film_base_rect = None
-        written = pipeline.export_file(path, settings, args.output, args.format)
-        a = settings.auto
+        # Fresh settings per frame: crop and upright guess are per frame.
+        s = settings.copy()
+        if first is None:
+            if args.base_rect:
+                s.film_base_rect = tuple(args.base_rect)
+        else:
+            # The base is sampled once (first frame) and kept for the whole roll.
+            s.auto.film_base = first.film_base
+            if args.roll_levels:
+                s.auto.d_black, s.auto.d_white, s.auto.gamma = first.d_black, first.d_white, first.gamma
+        preview = pipeline.to_working(raw_io.load_preview(path), s)
+        pipeline.update_auto(preview, s)
+        s.film_base_rect = None
+        first = first or s.auto
+        written = pipeline.export_file(path, s, args.output, args.format)
+        a = s.auto
         print(f"[{i}/{len(files)}] {path.name} -> {', '.join(w.name for w in written)}"
               f"  (base {a.film_base:.4f}, D {a.d_black:.2f}..{a.d_white:.2f}, gamma {a.gamma:.2f})")
     return 0

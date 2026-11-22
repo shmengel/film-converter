@@ -133,3 +133,18 @@ def test_flip_view_mirrors_what_is_shown(rotation, flip, vertical):
     assert np.array_equal(pipeline.orient(img, s), expected)
     pipeline.flip_view(s, vertical)                      # flipping twice undoes it
     assert np.array_equal(pipeline.orient(img, s), shown)
+
+
+def test_same_name_in_two_raw_formats_exports_both(tmp_path, monkeypatch):
+    """DSC_1.NEF and DSC_1.DNG must not overwrite each other's output."""
+    from filmconv import raw_io
+    from test_pipeline import synthetic_negative
+
+    full = synthetic_negative(300, 450)
+    monkeypatch.setattr(raw_io, "load_linear", lambda path, half_size=False: full)
+    monkeypatch.setattr(raw_io, "load_preview", lambda path: full)
+    roll = make_roll(tmp_path / "r", names=("DSC_1.NEF", "DSC_1.DNG", "DSC_2.NEF"))
+    written, errors = export_frames(roll, roll.names(), tmp_path / "out", ["jpeg"])
+    assert errors == []
+    assert len({p.name for p in written}) == 3
+    assert "DSC_2.jpg" in {p.name for p in written}          # unique names stay as before

@@ -323,6 +323,32 @@ Release** (the user wants people with only release access to be able to
 read it). If a public releases-only repo is created, use it as that repo's
 README too.
 
+### Pre-MVP review fixes (2026-11-22)
+- CLI: each frame now gets its own copy of the settings, so the upright guess
+  and auto crop are per frame (before, frame 1's guess was applied to the whole
+  roll). The film base is still taken from the first frame; `--roll-levels`
+  also carries its levels. An explicit `--rotate` (including 0) is never
+  overridden by the guess.
+- Output names: two RAWs with the same stem (DSC_1.NEF + DSC_1.DNG) export as
+  `DSC_1_NEF.jpg` / `DSC_1_DNG.jpg` (`Roll.output_stem`); unique names are unchanged.
+- GUI: asks before replacing files from an earlier export; quitting during an
+  export waits for the frame being written; the preview cache keeps at most
+  `CACHE_FRAMES` (40) frames, least recently shown dropped first.
+- Undo (Ctrl/⌘+Z, Edit menu): up to 50 steps of per-frame settings snapshots.
+  One slider drag = one step. Covers sliders, rotate/flip, crop, base pick,
+  auto crop/base/balance, reset, paste/apply to all, channel, base-is-black.
+  No redo yet.
+- The sharpening slider is labelled "Export sharpening": 1 px at full
+  resolution can't show on the 1/4-size preview.
+- `tests/test_gui.py`: offscreen MainWindow tests with synthetic previews.
+  They patch QMessageBox (modal dialogs would hang). `tests/test_cli.py`: CLI.
+- Version 0.3.0. Releasing: bump `filmconv.__version__`, merge to master, then
+  `git tag vX.Y.Z && git push origin vX.Y.Z`. The "Build macOS app" workflow
+  checks the tag matches the version, builds and tests, and creates a DRAFT
+  GitHub Release with the .dmg and HOW_IT_WORKS.md; publish it on GitHub.
+  The Windows installer is still built by hand (`tools\build.ps1`) and can be
+  added to the draft with `gh release upload vX.Y.Z <installer.exe>`.
+
 ### Working notes for future sessions
 - GUI layout: `filmconv_gui/main_window.py` (window, modes positive /
   negative / crop / base, jobs), `widgets.py` (ImageView with crop editor,

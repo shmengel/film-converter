@@ -30,6 +30,9 @@ CROP_COLOR, BASE_COLOR = QColor(80, 220, 120), QColor(255, 80, 60)
 EDIT_FIELDS = [f.name for f in fields(Settings) if f.name not in ("auto",)]
 # Changing these invalidates the automatic analysis of a frame.
 ANALYSIS_FIELDS = ("channel", "film_base_rect", "crop", "auto_crop", "black_from_base")
+# Previews kept in memory (~7 MB each at 1600 px). Older ones are reloaded on demand.
+CACHE_FRAMES = 40
+UNDO_STEPS = 50
 
 
 # --- background jobs -----------------------------------------------------------
@@ -116,11 +119,16 @@ class MainWindow(QMainWindow):
         self.roll: Roll | None = None
         self.name: str | None = None               # current frame
         self.cache: dict[tuple[str, str], tuple[np.ndarray, float]] = {}
+        self.prepared: set[str] = set()            # frames analyzed at least once
+        # Undo: each step holds copies of the settings of the frames it changed.
+        self.undo_stack: list[dict[str, Settings]] = []
+        self._undo_slider: str | None = None       # slider whose drag is already saved
         self.working: np.ndarray | None = None
         self.scale = 1.0
         self.positive8: np.ndarray | None = None
         self.clipboard: Settings | None = None
         self.export_job: Job | None = None
+        self._closing = False
         self.mode = "positive"                     # positive | negative | crop | base
 
         self._render_timer = QTimer(self, singleShot=True, interval=15)
@@ -202,17 +210,24 @@ class MainWindow(QMainWindow):
             k = SLIDER_STEPS if name == "exposure" else 1
             s.setRange(int(lo * k), int(hi * k))
             s.valueChanged.connect(lambda v, n=name, k=k: self.on_slider(n, v / k))
+            s.sliderReleased.connect(self._end_slider_drag)
             val = QLabel()
             val.setMinimumWidth(42)
             row = QHBoxLayout()
             row.addWidget(s)
             row.addWidget(val)
-            form.addRow(name.capitalize(), row)
+            label = name.capitalize()
+            if name == "sharpening":
+                # 1 px at full resolution is invisible on the 1/4-size preview.
+                label = "Export sharpening"
+                s.setToolTip("Sharpens the exported files. The effect is too fine to see in "
+                             "this preview; zoom into an exported file to judge it.")
+            form.addRow(label, row)
             self.sliders[name], self.slider_labels[name] = s, val
         row = QHBoxLayout()
         btn = QPushButton("Auto balance")
         btn.setToolTip("Recompute black point, white point and midtones for this frame")
-        btn.clicked.connect(lambda: self.reprocess(force_levels=True))
+        btn.clicked.connect(self.on_auto_balance)
         row.addWidget(btn)
         btn = QPushButton("Reset sliders")
         btn.clicked.connect(self.on_reset_sliders)
@@ -322,6 +337,8 @@ class MainWindow(QMainWindow):
         ])
         m = self.menuBar().addMenu("&Edit")
         self._add_actions(m, [
+            ("&Undo", QKeySequence.Undo, self.undo),
+            None,
             ("&Copy settings", "Ctrl+Shift+C", self.on_copy),
             ("&Paste settings to selected", "Ctrl+Shift+V", self.on_paste),
             ("Select &all frames", "Ctrl+A", lambda: self.strip.selectAll()),
@@ -345,6 +362,7 @@ class MainWindow(QMainWindow):
             "H  V\tFlip horizontal / vertical\n"
             "C\tAdjust crop (Enter = done)\n"
             "hold B\tShow the negative\n"
+            "Ctrl+Z\tUndo\n"
             "Ctrl+Shift+C / V\tCopy / paste slider settings\n"
             "Ctrl+E\tExport…\n\n"
             "Ctrl+click or Shift+click thumbnails to work on several frames at once."))
@@ -436,6 +454,8 @@ class MainWindow(QMainWindow):
         self.bg_pool.clear()
         self.roll, self.name, self.working = roll, None, None
         self.cache.clear()
+        self.prepared.clear()
+        self.undo_stack.clear()
         self.setWindowTitle(f"Film Converter – {folder.name}")
         self.strip.set_frames(roll.names())
         for n in roll.names():
@@ -489,7 +509,9 @@ class MainWindow(QMainWindow):
             self.show_frame()
         elif name != self.name:
             self.update_thumbnail(name)    # with the frame's current settings
-        ready = len({n for n, _ in self.cache})
+        self.prepared.add(name)
+        self._trim_cache()
+        ready = len(self.prepared)
         total = len(self.roll.files)
         if ready < total:
             self.statusBar().showMessage(f"Preparing previews… {ready}/{total}")
@@ -503,6 +525,7 @@ class MainWindow(QMainWindow):
             return
         self.name = name
         self.working = None
+        self._undo_slider = None
         if self.mode == "base":     # crop mode stays on, to tweak frame after frame
             self._uncheck_modes()
         i = self.roll.names().index(name)
@@ -516,8 +539,19 @@ class MainWindow(QMainWindow):
             self.view.set_image(None)
             self._queue_prepare(name, self.pool)   # priority: the main pool
 
+    def _trim_cache(self):
+        """Drop the least recently shown previews; never the current frame's."""
+        while len(self.cache) > CACHE_FRAMES:
+            old = next((k for k in self.cache if k[0] != self.name), None)
+            if old is None:
+                return
+            del self.cache[old]
+
     def show_frame(self):
-        self.working, self.scale = self.cache[(self.name, self.settings.channel)]
+        key = (self.name, self.settings.channel)
+        self.cache[key] = self.cache.pop(key)      # most recently used goes last
+        self.working, self.scale = self.cache[key]
+        self._trim_cache()
         if self.settings.auto.d_black is None or self.settings.auto.film_base is None:
             pipeline.update_auto(self.working, self.settings)
         self._update_base_label()
@@ -701,15 +735,59 @@ class MainWindow(QMainWindow):
             return True
         return super().eventFilter(obj, e)
 
+    # --- undo ------------------------------------------------------------------
+    def _push_undo(self, names: list[str] | None = None):
+        """Remember the current settings of these frames (default: this frame)."""
+        if self.roll is None or self.name is None:
+            return
+        names = names or [self.name]
+        self.undo_stack.append({n: self.roll.frames[n].copy() for n in names})
+        del self.undo_stack[:-UNDO_STEPS]
+        self._undo_slider = None
+
+    def _end_slider_drag(self):
+        self._undo_slider = None
+
+    def undo(self):
+        if self.roll is None or not self.undo_stack:
+            self.statusBar().showMessage("Nothing to undo", 3000)
+            return
+        step = self.undo_stack.pop()
+        self._undo_slider = None
+        self.roll.frames.update(step)
+        for n in step:
+            if n != self.name:
+                self.update_thumbnail(n)
+        if self.name in step:
+            self._sync_controls()
+            self._reload_current()
+        self.frame_changed(list(step))
+        self.statusBar().showMessage("Undone", 3000)
+
+    def _reload_current(self):
+        """Show the current frame again after its settings were replaced."""
+        self.working = None
+        if (self.name, self.settings.channel) in self.cache:
+            self.show_frame()
+        else:
+            self._queue_prepare(self.name, self.pool)
+
+    # --- edits ------------------------------------------------------------------
+    def on_auto_balance(self):
+        self._push_undo()
+        self.reprocess(force_levels=True)
+
     def on_crop_edited(self, rect):
         if self.working is None or self.mode != "crop":
             return
+        self._push_undo()
         self.settings.crop = pipeline.rect_from_view(rect, self.settings)
         self.reprocess(force_levels=True)
 
     def on_rect_picked(self, rect):
         if self.working is None:
             return
+        self._push_undo()
         rect = pipeline.rect_from_view(rect, self.settings)
         if self.mode == "base":
             self.settings.film_base_rect = rect
@@ -718,6 +796,9 @@ class MainWindow(QMainWindow):
         self.reprocess(force_levels=True)
 
     def on_slider(self, name, value):
+        if self._undo_slider != name:      # one undo step per drag, not per pixel
+            self._push_undo()
+            self._undo_slider = name
         setattr(self.settings, name, value)
         self._update_slider_label(name)
         self._render_timer.start()
@@ -734,6 +815,7 @@ class MainWindow(QMainWindow):
         if self.roll is None or self.name is None:
             return
         names = self.selected_or_current()
+        self._push_undo(names)
         for n in names:
             fn(self.roll.frames[n])
             if n != self.name:
@@ -742,11 +824,13 @@ class MainWindow(QMainWindow):
         self.frame_changed(names)
 
     def on_auto_crop(self):
+        self._push_undo()
         self.settings.crop = None
         self.settings.auto_crop = True
         self.reprocess(force_levels=True)
 
     def on_reset_sliders(self):
+        self._push_undo()
         self.settings.reset_adjustments()
         self._sync_controls()
         self.render()
@@ -773,6 +857,7 @@ class MainWindow(QMainWindow):
         self._apply_look(self.settings.copy(), self.roll.names())
 
     def _apply_look(self, source: Settings, names: list[str]):
+        self._push_undo(names)
         self.roll.apply_adjustments(source, names)
         for n in names:
             if n != self.name:
@@ -783,23 +868,22 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Applied settings to {len(names)} frame(s)", 4000)
 
     def on_channel_changed(self, index):
+        self._push_undo()
         self.settings.channel = CHANNELS[index]
         if self.settings.film_base_rect is None:
             self.settings.auto.film_base = None
         self.settings.auto = AutoValues(film_base=self.settings.auto.film_base,
                                         rotation=self.settings.auto.rotation)
         self.frame_changed()
-        self.working = None
-        if (self.name, self.settings.channel) in self.cache:
-            self.show_frame()
-        else:
-            self._queue_prepare(self.name, self.pool)
+        self._reload_current()
 
     def on_option_changed(self):
+        self._push_undo()
         self.settings.black_from_base = self.chk_base_black.isChecked()
         self.reprocess(force_levels=True)
 
     def on_auto_base(self):
+        self._push_undo()
         self.settings.film_base_rect = None
         self.settings.auto.film_base = None
         self.reprocess(force_levels=True)
@@ -825,8 +909,11 @@ class MainWindow(QMainWindow):
         out_dir = self.roll.output_dir if self.roll else None
         if self.roll is None or not names or out_dir is None or self.export_job is not None:
             return
+        if not self._confirm_replace(names, out_dir, formats, sheet):
+            return
         self.save_roll()
-        job = Job(export_frames, self.roll, list(names), out_dir, formats, sheet, with_progress=True)
+        roll = self.roll           # the user may open another roll while this runs
+        job = Job(export_frames, roll, list(names), out_dir, formats, sheet, with_progress=True)
         self.export_job = job
         self.progress.setRange(0, len(names) + (1 if sheet else 0))
         self.progress.setValue(0)
@@ -849,12 +936,14 @@ class MainWindow(QMainWindow):
             self.statusBar().clearMessage()
 
         def done(result):
+            if self._closing:
+                return
             written, errors = result
             finish()
             sheets = [p for p in written if p.name.endswith(contact_sheet.FILE_SUFFIX)]
             done_paths = set(written)
             frames = sum(1 for n in names if any(
-                p in done_paths for p in pipeline.output_paths(Path(n), out_dir, formats).values()))
+                p in done_paths for p in roll.output_paths(n, out_dir, formats).values()))
             msg = QMessageBox(self)
             msg.setWindowTitle("Export finished")
             text = f"Exported {frames} of {len(names)} frame(s) to\n{out_dir}" if formats else \
@@ -876,6 +965,8 @@ class MainWindow(QMainWindow):
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(sheets[0])))
 
         def failed(text):
+            if self._closing:
+                return
             finish()
             QMessageBox.critical(self, "Export failed", text)
 
@@ -883,6 +974,19 @@ class MainWindow(QMainWindow):
         job.signals.done.connect(done)
         job.signals.failed.connect(failed)
         self.pool.start(job)
+
+    def _confirm_replace(self, names, out_dir, formats, sheet) -> bool:
+        """Ask before overwriting files from an earlier export."""
+        targets = [p for n in names for p in self.roll.output_paths(n, out_dir, formats).values()]
+        if sheet:
+            targets.append(Path(out_dir) / (self.roll.folder.name + contact_sheet.FILE_SUFFIX))
+        existing = [p for p in targets if p.exists()]
+        if not existing:
+            return True
+        return QMessageBox.question(
+            self, "Replace files?",
+            f"{len(existing)} file(s) in\n{out_dir}\nare from an earlier export "
+            f"(e.g. {existing[0].name}).\n\nReplace them?") == QMessageBox.Yes
 
     def on_cancel_export(self):
         if self.export_job is not None:
@@ -909,7 +1013,13 @@ class MainWindow(QMainWindow):
             if QMessageBox.question(self, "Quit", "An export is running. Quit anyway?") != QMessageBox.Yes:
                 e.ignore()
                 return
-            self.export_job.cancel_requested = True
+            job = self.export_job
+            job.cancel_requested = True
+            # Let the frame being written finish, or a half-written file is left
+            # behind. Its "finished" message must not pop up after the window is gone.
+            self._closing = True
+            self.statusBar().showMessage("Finishing the current frame…")
+            self.pool.waitForDone(60000)
         QApplication.instance().removeEventFilter(self)
         self.save_roll()
         self.bg_pool.clear()

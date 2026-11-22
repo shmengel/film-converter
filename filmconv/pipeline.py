@@ -145,8 +145,10 @@ def render(working: np.ndarray, settings: Settings, scale: float = 1.0) -> np.nd
     return orient(sharpen(positive, settings, scale), settings)
 
 
-def output_paths(raw_path: Path, out_dir: Path, formats: list[str]) -> dict[str, Path]:
-    return {fmt: out_dir / (raw_path.stem + export.suffix(fmt)) for fmt in formats}
+def output_paths(raw_path: Path, out_dir: Path, formats: list[str],
+                 stem: str | None = None) -> dict[str, Path]:
+    stem = stem or raw_path.stem
+    return {fmt: out_dir / (stem + export.suffix(fmt)) for fmt in formats}
 
 
 def render_full(raw_path: str | Path, settings: Settings) -> np.ndarray:
@@ -159,11 +161,11 @@ def render_full(raw_path: str | Path, settings: Settings) -> np.ndarray:
 
 
 def save_positive(positive: np.ndarray, raw_path: str | Path, out_dir: str | Path,
-                  formats: list[str]) -> list[Path]:
+                  formats: list[str], stem: str | None = None) -> list[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     written = []
-    for fmt, path in output_paths(Path(raw_path), out_dir, formats).items():
+    for fmt, path in output_paths(Path(raw_path), out_dir, formats, stem).items():
         export.save(path, positive, fmt)
         written.append(path)
     return written

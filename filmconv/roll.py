@@ -87,6 +87,19 @@ class Roll:
         """1-based position of a frame in the roll."""
         return self.names().index(name) + 1
 
+    def output_stem(self, name: str) -> str:
+        """Output file name without extension: the RAW's stem, or stem plus its
+        extension when another RAW in the roll has the same stem (DSC_1.NEF and
+        DSC_1.DNG). Compared case-insensitively, like the Mac and Windows disks."""
+        p = Path(name)
+        stem = p.stem.lower()
+        if sum(1 for f in self.files if f.stem.lower() == stem) > 1:
+            return f"{p.stem}_{p.suffix[1:]}"
+        return p.stem
+
+    def output_paths(self, name: str, out_dir: Path, formats: list[str]) -> dict[str, Path]:
+        return pipeline.output_paths(Path(name), Path(out_dir), formats, self.output_stem(name))
+
     def apply_adjustments(self, source: Settings, names: list[str]) -> None:
         """Copy the slider values (the 'look') to other frames. Crop, rotation,
         film base and auto values stay per frame."""
@@ -127,7 +140,8 @@ def export_frames(roll: Roll, names: list[str], out_dir: Path, formats: list[str
                 roll.frames[name].auto = settings.auto
                 roll.frames[name].rotation = settings.rotation
             positive = pipeline.render_full(path, settings)
-            written += pipeline.save_positive(positive, path, out_dir, formats)
+            written += pipeline.save_positive(positive, path, out_dir, formats,
+                                             roll.output_stem(name))
             if sheet:
                 thumbs.append((f"{roll.number(name)}   {path.stem}", contact_sheet.thumbnail(positive)))
         except Exception as e:  # keep going; report at the end
