@@ -332,6 +332,7 @@ class MainWindow(QMainWindow):
         m = self.menuBar().addMenu("&Help")
         self._add_actions(m, [
             ("&Keyboard shortcuts", "F1", self.show_help),
+            ("Open-source &licences", None, self.open_licences),
             ("&About", None, self.show_about),
         ])
 
@@ -353,7 +354,19 @@ class MainWindow(QMainWindow):
             f"<b>{filmconv.APP_NAME}</b> {filmconv.__version__}<br><br>"
             "Turns DSLR scans of black-and-white negatives into positives.<br>"
             "Your RAW files are never changed; edits are kept in "
-            "<i>film-converter.json</i> inside each roll folder."))
+            "<i>film-converter.json</i> inside each roll folder.<br><br>"
+            "Built with Qt / PySide6 (LGPL-3.0), LibRaw, OpenCV, NumPy, Pillow and "
+            "tifffile. Help → Open-source licences shows their licences."))
+
+    def open_licences(self):
+        """The licence texts that ship with the app (packaging/licenses in the source tree)."""
+        import sys
+        meipass = getattr(sys, "_MEIPASS", None)      # set inside the built app
+        if meipass:
+            folder = Path(meipass) / "licenses"
+        else:
+            folder = Path(__file__).resolve().parent.parent / "packaging" / "licenses"
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
 
     def _add_actions(self, menu, items):
         for item in items:

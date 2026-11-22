@@ -1,0 +1,41 @@
+Film Converter - third-party software
+====================================
+
+Film Converter is free to use. It is built with the open-source components
+below, which are redistributed unmodified under their own licences. Their
+licence texts are in this "licenses" folder (one subfolder per package).
+
+Component                 Version    Licence
+------------------------  ---------  ------------------------------------------
+Qt (via PySide6)          6.12.0     LGPL-3.0  (LGPL-3.0.txt, GPL-3.0.txt)
+PySide6 / Shiboken6       6.12.0     LGPL-3.0  (LGPL-3.0.txt, GPL-3.0.txt)
+LibRaw (via rawpy)        0.22.1     LGPL-2.1 or CDDL-1.0 (rawpy/LICENSE.LibRaw)
+rawpy                     0.27.1     MIT
+NumPy                     2.5.4      BSD-3-Clause and others (numpy/)
+OpenCV (headless)         5.0.0      Apache-2.0; its bundled libraries, incl.
+                                     FFmpeg (LGPL-2.1), are listed in
+                                     opencv-python-headless/LICENSE-3RD-PARTY.txt
+Pillow                    13.0.0     MIT-CMU
+tifffile                  2026.10.15 BSD-3-Clause
+Python                    3.12       PSF License (python/LICENSE.txt)
+PyInstaller bootloader    6.22.3     GPL-2.0 with the bootloader exception
+                                     (allows distributing apps built with it)
+
+About the LGPL components (Qt, PySide6, LibRaw, FFmpeg)
+  - They are used unmodified and as separate shared libraries (.dll on
+    Windows; .dylib / .framework inside Film Converter.app on macOS), so you
+    may replace them with your own compatible builds.
+  - Their complete source code is available from the projects:
+      Qt 6.12.0 ............ https://download.qt.io/official_releases/qt/6.12/
+      PySide6 6.12.0 ....... https://download.qt.io/official_releases/QtForPython/
+      LibRaw ............... https://www.libraw.org/download
+      FFmpeg ............... https://ffmpeg.org/download.html
+                             (build used by OpenCV: https://github.com/opencv/opencv-python)
+  - If any of these links stop working, ask through the project page and
+    we will provide the corresponding source code.
+
+The GPL-only Qt module "Qt Virtual Keyboard" is deliberately not included.
+LibRaw is used without its optional GPL demosaic packs.
+
+Film Converter's own code and icon are original work. It does not contain
+code, presets or artwork from any other film-conversion product.

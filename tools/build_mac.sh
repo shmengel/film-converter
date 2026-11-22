@@ -40,6 +40,16 @@ echo "== PyInstaller"
 APP="build/dist/Film Converter.app"
 BIN="$APP/Contents/MacOS/Film Converter"
 
+echo "== Licence check"
+# Qt Virtual Keyboard is GPL-only and must not ship (the spec removes it).
+if find "$APP" -ipath '*virtualkeyboard*' | grep -q .; then
+    find "$APP" -ipath '*virtualkeyboard*' | head
+    echo "GPL-only Qt Virtual Keyboard found in the app"; exit 1
+fi
+LIC="$(find "$APP" -type d -name licenses | head -1)"
+[ -f "$LIC/THIRD_PARTY_NOTICES.txt" ] && [ -f "$LIC/LGPL-3.0.txt" ] || { echo "Licence files missing from the app"; exit 1; }
+echo "licences: $LIC ($(find "$LIC" -type f | wc -l | tr -d ' ') files)"
+
 echo "== Smoke test of the built app"
 rm -rf build/smoke
 if ! "$BIN" --smoke-test build/smoke; then

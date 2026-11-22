@@ -16,11 +16,41 @@ MAC = sys.platform == "darwin"
 ICO = str(ROOT / "filmconv_gui" / "icon.ico")       # window icon (both), exe icon (Windows)
 ICNS = str(ROOT / "filmconv_gui" / "icon.icns")     # app bundle icon (macOS)
 
+
+def licence_files():
+    """Licence texts that must travel with the app (see packaging/licenses/
+    THIRD_PARTY_NOTICES.txt): our notices + LGPL/GPL texts, each bundled
+    package's own licence files, and Python's. They end up in a "licenses"
+    folder next to the program files."""
+    from importlib.metadata import distribution
+    out = [(str(p), "licenses") for p in (ROOT / "packaging" / "licenses").glob("*.txt")]
+    for pkg in ("numpy", "opencv-python-headless", "pillow", "rawpy", "tifffile",
+                "pyside6", "shiboken6"):
+        dist = distribution(pkg)
+        for f in dist.files or []:
+            parts = Path(str(f)).parts
+            name = parts[-1].upper()
+            if not parts[0].endswith(".dist-info") or "COMMERCIAL" in name:
+                continue          # Qt is used under the LGPL, not its commercial licence
+            if "LICEN" in name or "COPYING" in name or "NOTICE" in name:
+                # Keep sub-folders (numpy has several files called LICENSE.md).
+                sub = Path(*parts[1:-1])
+                if sub.parts and sub.parts[0] == "licenses":
+                    sub = Path(*sub.parts[1:])
+                out.append((str(dist.locate_file(f)), str(Path("licenses", pkg, sub))))
+    base = Path(sys.base_prefix)
+    for p in [base / "LICENSE.txt", *base.glob("lib/python3*/LICENSE.txt")]:
+        if p.is_file():
+            out.append((str(p), "licenses/python"))
+            break
+    return out
+
+
 a = Analysis(
     [str(ROOT / "app.py")],
     pathex=[str(ROOT)],
     binaries=collect_dynamic_libs("rawpy"),          # LibRaw DLL / dylib
-    datas=[(ICO, "filmconv_gui")],
+    datas=[(ICO, "filmconv_gui")] + licence_files(),
     hiddenimports=[],
     excludes=[
         "tkinter", "pytest", "_pytest", "matplotlib", "scipy", "IPython", "pandas",
@@ -43,6 +73,14 @@ if not MAC:
             "Qt6Quick", "Qt6Qml", "qpdf.dll", "Qt6Pdf")
     a.binaries = [b for b in a.binaries if not any(d in b[0] for d in DROP)]
     a.datas = [d for d in a.datas if not any(x in d[0] for x in DROP)]
+else:
+    # Qt Virtual Keyboard is GPL-3.0 only (the rest of Qt used here is LGPL-3.0),
+    # and the app has no use for an on-screen keyboard. Remove its plugin and
+    # framework as a whole, so no half-framework is left behind.
+    def _keep(entry):
+        return "virtualkeyboard" not in entry[0].lower()
+    a.binaries = [b for b in a.binaries if _keep(b)]
+    a.datas = [d for d in a.datas if _keep(d)]
 
 pyz = PYZ(a.pure)
 exe = EXE(
