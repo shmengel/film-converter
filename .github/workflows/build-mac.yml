@@ -2,6 +2,7 @@
 # Run it from the repo's "Actions" tab ("Build macOS app" > "Run workflow"),
 # or push a version tag (git tag v0.3.0 && git push --tags).
 # The .dmg is under the finished run's "Artifacts" (downloaded as a .zip).
+# Repo: github.com/shmengel/film-converter (private).
 name: Build macOS app
 
 on:
