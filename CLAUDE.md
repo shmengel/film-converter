@@ -297,6 +297,22 @@ account): first launch needs System Settings → Privacy & Security → "Open An
   Retina: previews are 1600 px, so a full-screen preview on a 2x display is
   slightly upscaled. Raise `PREVIEW_MAX_SIZE` only if it looks soft.
 
+### Licences (2026-11-22)
+Before sharing installers publicly: audited what ships. All dependencies are
+permissive (MIT/BSD/Apache/PSF) except Qt + PySide6 (LGPL-3.0), LibRaw
+(LGPL-2.1/CDDL; rawpy built without the GPL demosaic packs) and FFmpeg inside
+OpenCV (LGPL-2.1). Our code and icon are original; nothing is taken from
+Negative Lab Pro, darktable/negadoctor or RawTherapee (only the textbook idea
+D = log10(base/T), mentioned in a comment in `film_types.py`).
+- `packaging/licenses/` (THIRD_PARTY_NOTICES.txt + LGPL/GPL v3 texts) and each
+  package's own licence files are bundled into a `licenses` folder by the
+  spec. Qt's commercial licence text is skipped. Help → Open-source licences
+  opens it. Update the versions in THIRD_PARTY_NOTICES.txt when bumping
+  requirements.txt.
+- Qt Virtual Keyboard is GPL-3.0 only: dropped on both OSes. `build_mac.sh`
+  fails if it reappears or the licences are missing.
+- Not legal advice; the user was told so.
+
 ### Working notes for future sessions
 - GUI layout: `filmconv_gui/main_window.py` (window, modes positive /
   negative / crop / base, jobs), `widgets.py` (ImageView with crop editor,
